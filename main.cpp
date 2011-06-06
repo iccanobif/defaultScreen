@@ -1,7 +1,9 @@
 #include <windows.h>
 #include <winuser.h>
 #include <string.h>
+#include <QtGui>
 #include <QDebug>
+#include "mainwindow.hpp"
 
 void stampaRisultato(int result)
 {
@@ -40,10 +42,10 @@ void initDevMode(DEVMODE * DevMode)
     DevMode->dmSize = sizeof(DEVMODE);
 }
 
-int main() {
+void cambiaSchermoVecchioStile()
+{
     DISPLAY_DEVICE DisplayDevice;
     DEVMODE    DevMode;
-//    WCHAR nomeDevice[200];
     std::wstring nomeDevice;
     int i = 0, j = 0;
 
@@ -64,7 +66,7 @@ int main() {
         ZeroMemory(&DevMode, sizeof(DevMode));
         DevMode.dmSize = sizeof(DevMode);
         if ( !EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
-              OutputDebugString(L"Store default failed\n");
+              qDebug() << "Store default failed";
 
         qDebug() << QString::fromWCharArray(DisplayDevice.DeviceName) << DevMode.dmPelsWidth << "x" << DevMode.dmPelsHeight << "x:" << DevMode.dmPosition.x << " y:" << DevMode.dmPosition.y;
 
@@ -107,5 +109,14 @@ int main() {
                                     NULL));
 
     stampaRisultato(ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL));
-    return 0;
 }
+
+
+int main( int argc, char **argv )
+{
+    QApplication a(argc,argv);
+    MainWindow w;
+    w.show();
+    return a.exec();
+}
+
