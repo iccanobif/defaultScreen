@@ -25,14 +25,8 @@ int getNumberOfDevices()
     return out;
 }
 
-MainWindow::MainWindow(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::MainWindow)
+void MainWindow::loadScreenInfos()
 {
-    ui->setupUi(this);
-
-    QMessageBox::information(NULL, "",QString::number(getNumberOfDevices()));
-
     DISPLAY_DEVICE DisplayDevice;
     int i = 0;
 
@@ -40,14 +34,29 @@ MainWindow::MainWindow(QWidget *parent) :
     while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
     {
         if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
-            ui->lstDevices->addItem(QString::fromWCharArray(DisplayDevice.DeviceString));
+        {
+            QListWidgetItem *item = new QListWidgetItem(QString::fromWCharArray(DisplayDevice.DeviceString));
+            item->setData(Qt::UserRole, QString::fromWCharArray(DisplayDevice.DeviceName));
+            ui->lstDevices->addItem(item);
+        }
         initDisplayDevice(&DisplayDevice);
     }
-
 }
 
+MainWindow::MainWindow(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    loadScreenInfos();
+}
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::on_lstDevices_itemDoubleClicked(QListWidgetItem *item)
+{
+   QMessageBox::information(NULL, "lol", item->data(Qt::UserRole).toString());
 }
