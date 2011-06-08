@@ -1,10 +1,12 @@
 
 SOURCES += \
     main.cpp \
-    mainwindow.cpp
+    mainwindow.cpp \
+    devicelistitem.cpp
 
 HEADERS += \
-    mainwindow.hpp
+    mainwindow.hpp \
+    devicelistitem.hpp
 
 FORMS += \
     mainwindow.ui
