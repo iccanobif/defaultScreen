@@ -83,6 +83,8 @@ int changePrimaryScreen(const QString &deviceName)
     int offsetx = DevMode.dmPosition.x;
     int offsety = DevMode.dmPosition.y;
 
+    QMessageBox::information(NULL, "", "offsetx: " + QString::number(offsetx) + "; offsety: " + QString::number(offsety));
+
     int i = 0;
     initDisplayDevice(&DisplayDevice);
     while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
@@ -90,27 +92,40 @@ int changePrimaryScreen(const QString &deviceName)
         if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
         {
             initDevMode(&DevMode);
+            qDebug() << QString::fromWCharArray(DisplayDevice.DeviceName);
             qDebug() << "EnumDisplaySettings: ";
             qDebug() << EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode);
 
             DevMode.dmPosition.x -= offsetx;
             DevMode.dmPosition.y -= offsety;
 
-            stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
-                                                    &DevMode,
-                                                    NULL,
-                                                    CDS_UPDATEREGISTRY,
-                                                    NULL));
-
-
+            if (QString::fromWCharArray(DisplayDevice.DeviceName) == deviceName)
+            {
+                qDebug() << "Setting the primary monitor";
+                stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
+                                                        &DevMode,
+                                                        NULL,
+                                                        CDS_UPDATEREGISTRY | CDS_SET_PRIMARY,
+                                                        NULL));
+            }
+            else
+            {
+                stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
+                                                        &DevMode,
+                                                        NULL,
+                                                        CDS_UPDATEREGISTRY,
+                                                        NULL));
+            }
         }
     }
 
-    return 0;
+    return 1;
 }
 
 void MainWindow::loadScreenInfos()
 {
+    ui->lstDevices->clear();
+
     DISPLAY_DEVICE DisplayDevice;
     int i = 0;
 
@@ -128,6 +143,7 @@ void MainWindow::loadScreenInfos()
             devDescription += " - ";
             devDescription += QString::number(DevMode.dmPelsWidth) + "x";
             devDescription += QString::number(DevMode.dmPelsHeight);
+            devDescription += "; " + QString::number(DevMode.dmPosition.x);
 
             QListWidgetItem *item = new QListWidgetItem(devDescription);
             item->setData(Qt::UserRole, QString::fromWCharArray(DisplayDevice.DeviceName));
@@ -153,74 +169,5 @@ MainWindow::~MainWindow()
 void MainWindow::on_lstDevices_itemDoubleClicked(QListWidgetItem *item)
 {
     changePrimaryScreen(item->data(Qt::UserRole).toString());
-}
-
-
-void cambiaSchermoVecchioStile()
-{
-    DISPLAY_DEVICE DisplayDevice;
-    DEVMODE    DevMode;
-    std::wstring nomeDevice;
-    int i = 0, j = 0;
-
-    ZeroMemory(&DisplayDevice, sizeof(DisplayDevice));
-    DisplayDevice.cb = sizeof(DisplayDevice);
-    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1 ))
-        {
-        j++;
-
-        if (j == 2)
-            nomeDevice = DisplayDevice.DeviceName;
-
-        if (DisplayDevice.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE)
-        {
-            qDebug() << "Il monitor principale attualmente e' " << QString::fromWCharArray(DisplayDevice.DeviceName);
-        }
-
-        ZeroMemory(&DevMode, sizeof(DevMode));
-        DevMode.dmSize = sizeof(DevMode);
-        if ( !EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
-              qDebug() << "Store default failed";
-
-        qDebug() << QString::fromWCharArray(DisplayDevice.DeviceName) << DevMode.dmPelsWidth << "x" << DevMode.dmPelsHeight << "x:" << DevMode.dmPosition.x << " y:" << DevMode.dmPosition.y;
-
-        ZeroMemory(&DisplayDevice, sizeof(DisplayDevice));
-        DisplayDevice.cb = sizeof(DisplayDevice);
-    }
-    qDebug() << "sto per cosare il device " << QString::fromStdWString(nomeDevice);
-    initDevMode(&DevMode);
-    if ( !EnumDisplaySettings(L"\\\\.\\DISPLAY1", ENUM_REGISTRY_SETTINGS, &DevMode) )
-        qDebug() << "store default failed";
-    DevMode.dmPosition.x = 1024;
-    DevMode.dmPosition.y = 0;
-
-    stampaRisultato(ChangeDisplaySettingsEx(L"\\\\.\\DISPLAY1",
-                                    &DevMode,
-                                    NULL,
-                                    CDS_UPDATEREGISTRY,
-                                    NULL));
-
-    initDevMode(&DevMode);
-    if ( !EnumDisplaySettings(L"\\\\.\\DISPLAY2", ENUM_REGISTRY_SETTINGS, &DevMode) )
-        qDebug() << "store default failed";
-    DevMode.dmPosition.x = 1024 + 1920;
-    DevMode.dmPosition.y = 0;
-    stampaRisultato(ChangeDisplaySettingsEx(L"\\\\.\\DISPLAY2",
-                                    &DevMode,
-                                    NULL,
-                                    CDS_UPDATEREGISTRY,
-                                    NULL));
-
-    initDevMode(&DevMode);
-    if ( !EnumDisplaySettings(L"\\\\.\\DISPLAY3", ENUM_REGISTRY_SETTINGS, &DevMode) )
-        qDebug() << "store default failed";
-    DevMode.dmPosition.x = 0;
-    DevMode.dmPosition.y = 0;
-    stampaRisultato(ChangeDisplaySettingsEx(L"\\\\.\\DISPLAY3",
-                                    &DevMode,
-                                    NULL,
-                                    CDS_SET_PRIMARY | CDS_UPDATEREGISTRY,
-                                    NULL));
-
-    stampaRisultato(ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL));
+    loadScreenInfos();
 }
