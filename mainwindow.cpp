@@ -11,7 +11,7 @@ void initDisplayDevice(DISPLAY_DEVICE *DisplayDevice)
     DisplayDevice->cb = sizeof(DISPLAY_DEVICE);
 }
 
-void initDevMode(DEVMODE * DevMode)
+void initDevMode(DEVMODE *DevMode)
 {
     ZeroMemory(DevMode, sizeof(DEVMODE));
     DevMode->dmSize = sizeof(DEVMODE);
@@ -30,62 +30,6 @@ int getNumberOfDevices()
         initDisplayDevice(&dd);
     }
     return out;
-}
-
-int changePrimaryScreen(const QString &deviceName)
-{
-    DEVMODE DevMode;
-    WCHAR arrDeviceName[deviceName.length()+1];
-
-    //Get the offset
-
-    deviceName.toWCharArray(arrDeviceName);
-    arrDeviceName[deviceName.length()] = '\0';
-
-    initDevMode(&DevMode);
-    if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
-    {
-        QMessageBox::critical(NULL, "Error", "Cannot find settings for display " + deviceName);
-        return 0;
-    }
-    int offsetx = DevMode.dmPosition.x;
-    int offsety = DevMode.dmPosition.y;
-}
-
-void MainWindow::loadScreenInfos()
-{
-    DISPLAY_DEVICE DisplayDevice;
-    int i = 0;
-
-    initDisplayDevice(&DisplayDevice);
-    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
-    {
-        if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
-        {
-            QListWidgetItem *item = new QListWidgetItem(QString::fromWCharArray(DisplayDevice.DeviceString));
-            item->setData(Qt::UserRole, QString::fromWCharArray(DisplayDevice.DeviceName));
-            ui->lstDevices->addItem(item);
-        }
-        initDisplayDevice(&DisplayDevice);
-    }
-}
-
-MainWindow::MainWindow(QWidget *parent) :
-    QWidget(parent),
-    ui(new Ui::MainWindow)
-{
-    ui->setupUi(this);
-    loadScreenInfos();
-}
-
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
-
-void MainWindow::on_lstDevices_itemDoubleClicked(QListWidgetItem *item)
-{
-    changePrimaryScreen(item->data(Qt::UserRole).toString());
 }
 
 void stampaRisultato(int result)
@@ -118,6 +62,99 @@ void stampaRisultato(int result)
         break;
     }
 }
+
+int changePrimaryScreen(const QString &deviceName)
+{
+    DEVMODE DevMode;
+    DISPLAY_DEVICE DisplayDevice;
+    WCHAR arrDeviceName[deviceName.length()+1];
+
+    //Get the offset
+
+    deviceName.toWCharArray(arrDeviceName);
+    arrDeviceName[deviceName.length()] = '\0';
+
+    initDevMode(&DevMode);
+    if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
+    {
+        QMessageBox::critical(NULL, "Error", "Cannot find settings for display " + deviceName);
+        return 0;
+    }
+    int offsetx = DevMode.dmPosition.x;
+    int offsety = DevMode.dmPosition.y;
+
+    int i = 0;
+    initDisplayDevice(&DisplayDevice);
+    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
+    {
+        if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
+        {
+            initDevMode(&DevMode);
+            qDebug() << "EnumDisplaySettings: ";
+            qDebug() << EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode);
+
+            DevMode.dmPosition.x -= offsetx;
+            DevMode.dmPosition.y -= offsety;
+
+            stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
+                                                    &DevMode,
+                                                    NULL,
+                                                    CDS_UPDATEREGISTRY,
+                                                    NULL));
+
+
+        }
+    }
+
+    return 0;
+}
+
+void MainWindow::loadScreenInfos()
+{
+    DISPLAY_DEVICE DisplayDevice;
+    int i = 0;
+
+    initDisplayDevice(&DisplayDevice);
+    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
+    {
+        if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
+        {
+            DEVMODE DevMode;
+            initDevMode(&DevMode);
+            EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode);
+
+            QString devDescription;
+            devDescription = QString::fromWCharArray(DisplayDevice.DeviceString);
+            devDescription += " - ";
+            devDescription += QString::number(DevMode.dmPelsWidth) + "x";
+            devDescription += QString::number(DevMode.dmPelsHeight);
+
+            QListWidgetItem *item = new QListWidgetItem(devDescription);
+            item->setData(Qt::UserRole, QString::fromWCharArray(DisplayDevice.DeviceName));
+            ui->lstDevices->addItem(item);
+        }
+        initDisplayDevice(&DisplayDevice);
+    }
+}
+
+MainWindow::MainWindow(QWidget *parent) :
+    QWidget(parent),
+    ui(new Ui::MainWindow)
+{
+    ui->setupUi(this);
+    loadScreenInfos();
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+void MainWindow::on_lstDevices_itemDoubleClicked(QListWidgetItem *item)
+{
+    changePrimaryScreen(item->data(Qt::UserRole).toString());
+}
+
 
 void cambiaSchermoVecchioStile()
 {
