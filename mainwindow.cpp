@@ -117,16 +117,22 @@ int changePrimaryScreen(const QString &deviceName)
 {
     DISPLAY_DEVICE DisplayDevice;
 
-    QPoint point = getScreenPosition(deviceName);
-
-    QMessageBox::information(NULL, "", "offsetx: " + QString::number(point.x()) + "; offsety: " + QString::number(point.y()));
+    QPoint primaryScreenOldPosition = getScreenPosition(deviceName);
+    QMessageBox::information(NULL, "", "offsetx: " +  QString::number(primaryScreenOldPosition.x()) +
+                             "; offsety: " + QString::number(primaryScreenOldPosition.y()));
 
     int i = 0;
     initDisplayDevice(&DisplayDevice);
     while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
     {
         if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
-            qDebug() << "blah";
+        {
+            QString deviceName = QString::fromWCharArray(DisplayDevice.DeviceName);
+            QPoint currScreenOldPosition = getScreenPosition(deviceName);
+            stampaRisultato(setScreenPosition(deviceName,
+                                              currScreenOldPosition.x() - primaryScreenOldPosition.x(),
+                                              currScreenOldPosition.y() - primaryScreenOldPosition.y()));
+        }
     }
 
     ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
