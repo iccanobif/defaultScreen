@@ -63,13 +63,10 @@ void stampaRisultato(int result)
     }
 }
 
-int changePrimaryScreen(const QString &deviceName)
+QPoint getScreenPosition(const QString &deviceName)
 {
     DEVMODE DevMode;
-    DISPLAY_DEVICE DisplayDevice;
     WCHAR arrDeviceName[deviceName.length()+1];
-
-    //Get the offset
 
     deviceName.toWCharArray(arrDeviceName);
     arrDeviceName[deviceName.length()] = '\0';
@@ -78,46 +75,61 @@ int changePrimaryScreen(const QString &deviceName)
     if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
     {
         QMessageBox::critical(NULL, "Error", "Cannot find settings for display " + deviceName);
-        return 0;
+        return QPoint();
     }
-    int offsetx = DevMode.dmPosition.x;
-    int offsety = DevMode.dmPosition.y;
 
-    QMessageBox::information(NULL, "", "offsetx: " + QString::number(offsetx) + "; offsety: " + QString::number(offsety));
+    return QPoint(DevMode.dmPosition.x, DevMode.dmPosition.y);
+}
+
+int setScreenPosition(const QString &deviceName, int x, int y)
+{
+    DEVMODE DevMode;
+    WCHAR arrDeviceName[deviceName.length()+1];
+
+    deviceName.toWCharArray(arrDeviceName);
+    arrDeviceName[deviceName.length()] = '\0';
+
+    initDevMode(&DevMode);
+    if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
+    {
+        return -1;
+    }
+
+    DevMode.dmPosition.x = x;
+    DevMode.dmPosition.y = y;
+
+    if (x == 0 && y == 0)
+        return ChangeDisplaySettingsEx(arrDeviceName,
+                                                &DevMode,
+                                                NULL,
+                                                CDS_UPDATEREGISTRY | CDS_NORESET | CDS_SET_PRIMARY,
+                                                NULL);
+    else
+        return ChangeDisplaySettingsEx(arrDeviceName,
+                                                &DevMode,
+                                                NULL,
+                                                CDS_UPDATEREGISTRY | CDS_NORESET,
+                                                NULL);
+
+}
+
+int changePrimaryScreen(const QString &deviceName)
+{
+    DISPLAY_DEVICE DisplayDevice;
+
+    QPoint point = getScreenPosition(deviceName);
+
+    QMessageBox::information(NULL, "", "offsetx: " + QString::number(point.x()) + "; offsety: " + QString::number(point.y()));
 
     int i = 0;
     initDisplayDevice(&DisplayDevice);
     while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
     {
         if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
-        {
-            initDevMode(&DevMode);
-            qDebug() << QString::fromWCharArray(DisplayDevice.DeviceName);
-            qDebug() << "EnumDisplaySettings: ";
-            qDebug() << EnumDisplaySettings(DisplayDevice.DeviceName, ENUM_REGISTRY_SETTINGS, &DevMode);
-
-            DevMode.dmPosition.x -= offsetx;
-            DevMode.dmPosition.y -= offsety;
-
-            if (QString::fromWCharArray(DisplayDevice.DeviceName) == deviceName)
-            {
-                qDebug() << "Setting the primary monitor";
-                stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
-                                                        &DevMode,
-                                                        NULL,
-                                                        CDS_UPDATEREGISTRY | CDS_SET_PRIMARY,
-                                                        NULL));
-            }
-            else
-            {
-                stampaRisultato(ChangeDisplaySettingsEx(DisplayDevice.DeviceName,
-                                                        &DevMode,
-                                                        NULL,
-                                                        CDS_UPDATEREGISTRY,
-                                                        NULL));
-            }
-        }
+            qDebug() << "blah";
     }
+
+    ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
 
     return 1;
 }
