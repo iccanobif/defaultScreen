@@ -36,34 +36,18 @@ void stampaRisultato(int result)
 {
     switch (result)
     {
-     case DISP_CHANGE_SUCCESSFUL:
-        qDebug() << "DISP_CHANGE_SUCCESSFUL";
-        break;
-     case DISP_CHANGE_BADDUALVIEW :
-        qDebug() << "DISP_CHANGE_BADDUALVIEW ";
-        break;
-     case DISP_CHANGE_BADFLAGS :
-        qDebug() << "DISP_CHANGE_BADFLAGS ";
-        break;
-     case DISP_CHANGE_BADMODE :
-        qDebug() << "DISP_CHANGE_BADMODE ";
-        break;
-     case DISP_CHANGE_BADPARAM :
-        qDebug() << "DISP_CHANGE_BADPARAM ";
-        break;
-     case DISP_CHANGE_FAILED :
-        qDebug() << "DISP_CHANGE_FAILED ";
-        break;
-     case DISP_CHANGE_NOTUPDATED :
-        qDebug() << "DISP_CHANGE_NOTUPDATED ";
-        break;
-     case DISP_CHANGE_RESTART :
-        qDebug() << "DISP_CHANGE_RESTART ";
-        break;
+     case DISP_CHANGE_SUCCESSFUL:  qDebug() << "DISP_CHANGE_SUCCESSFUL";   break;
+     case DISP_CHANGE_BADDUALVIEW: qDebug() << "DISP_CHANGE_BADDUALVIEW "; break;
+     case DISP_CHANGE_BADFLAGS:    qDebug() << "DISP_CHANGE_BADFLAGS ";    break;
+     case DISP_CHANGE_BADMODE:     qDebug() << "DISP_CHANGE_BADMODE ";     break;
+     case DISP_CHANGE_BADPARAM:    qDebug() << "DISP_CHANGE_BADPARAM ";    break;
+     case DISP_CHANGE_FAILED:      qDebug() << "DISP_CHANGE_FAILED ";      break;
+     case DISP_CHANGE_NOTUPDATED:  qDebug() << "DISP_CHANGE_NOTUPDATED ";  break;
+     case DISP_CHANGE_RESTART:     qDebug() << "DISP_CHANGE_RESTART ";     break;
     }
 }
 
-QPoint getScreenPosition(const QString &deviceName)
+QRect getScreenRect(const QString &deviceName)
 {
     DEVMODE DevMode;
     WCHAR arrDeviceName[deviceName.length()+1];
@@ -75,13 +59,13 @@ QPoint getScreenPosition(const QString &deviceName)
     if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
     {
         QMessageBox::critical(NULL, "Error", "Cannot find settings for display " + deviceName);
-        return QPoint();
+        return QRect();
     }
 
-    return QPoint(DevMode.dmPosition.x, DevMode.dmPosition.y);
+    return QRect(DevMode.dmPosition.x, DevMode.dmPosition.y, DevMode.dmPelsWidth, DevMode.dmPelsHeight);
 }
 
-int setScreenPosition(const QString &deviceName, int x, int y)
+int setScreenRect(const QString &deviceName, int x, int y, int width, int height)
 {
     DEVMODE DevMode;
     WCHAR arrDeviceName[deviceName.length()+1];
@@ -95,13 +79,15 @@ int setScreenPosition(const QString &deviceName, int x, int y)
         return -1;
     }
 
-    DevMode.dmFields = DM_POSITION;
+    DevMode.dmFields = DM_POSITION | DM_PELSHEIGHT | DM_PELSWIDTH;
 
     qDebug() << deviceName;
     qDebug() << "Going from" <<  DevMode.dmPosition.x << "x" << DevMode.dmPosition.y << "to" << x << "x" << y;
 
     DevMode.dmPosition.x = x;
     DevMode.dmPosition.y = y;
+    DevMode.dmPelsHeight = height;
+    DevMode.dmPelsWidth = width;
 
     if (x == 0 && y == 0)
         return ChangeDisplaySettingsEx(arrDeviceName,
@@ -118,34 +104,63 @@ int setScreenPosition(const QString &deviceName, int x, int y)
 
 }
 
+int detachScreen(const QString &deviceName)
+{
+    DEVMODE DevMode;
+    WCHAR arrDeviceName[deviceName.length()+1];
+
+    deviceName.toWCharArray(arrDeviceName);
+    arrDeviceName[deviceName.length()] = '\0';
+
+    initDevMode(&DevMode);
+    if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
+    {
+        return -1;
+    }
+
+    DevMode.dmFields = DM_POSITION;
+
+    DevMode.dmPelsHeight = 0;
+    DevMode.dmPelsWidth = 0;
+
+    return ChangeDisplaySettingsEx(arrDeviceName,
+                                    &DevMode,
+                                    NULL,
+                                    CDS_UPDATEREGISTRY | CDS_NORESET,
+                                    NULL);
+
+}
+
 int changePrimaryScreen(const QString &deviceName)
 {
     DISPLAY_DEVICE DisplayDevice;
 
-    QPoint primaryScreenOldPosition = getScreenPosition(deviceName);
-    QMap<QString,QPoint> oldPositions;
+    QRect primaryScreenOldRect = getScreenRect(deviceName);
+    QMap<QString,QRect> oldRects;
 
     //get old position for every visible screen
-//    int i = 0;
-//    initDisplayDevice(&DisplayDevice);
-//    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
-//    {
-//        QString devName = QString::fromWCharArray(DisplayDevice.DeviceName);
-//        oldPositions.insert(devName, getScreenPosition(devName));
-//    }
-
     int i = 0;
     initDisplayDevice(&DisplayDevice);
     while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
     {
         if ((DisplayDevice.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(DisplayDevice.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
         {
-            QString deviceName = QString::fromWCharArray(DisplayDevice.DeviceName);
-            QPoint currScreenOldPosition = getScreenPosition(deviceName);
-            stampaRisultato(setScreenPosition(deviceName,
-                                              currScreenOldPosition.x() - primaryScreenOldPosition.x(),
-                                              currScreenOldPosition.y() - primaryScreenOldPosition.y()));
+            QString devName = QString::fromWCharArray(DisplayDevice.DeviceName);
+            oldRects.insert(devName, getScreenRect(devName));
+            detachScreen(devName);
         }
+    }
+
+    QMapIterator<QString, QRect> it(oldRects);
+
+    while (it.hasNext())
+    {
+        it.next();
+        setScreenRect(it.key(),
+                      it.value().left() - primaryScreenOldRect.left(),
+                      it.value().top() - primaryScreenOldRect.top(),
+                      it.value().width(),
+                      it.value().height());
     }
 
     ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
