@@ -95,6 +95,11 @@ int setScreenPosition(const QString &deviceName, int x, int y)
         return -1;
     }
 
+    DevMode.dmFields = DM_POSITION;
+
+    qDebug() << deviceName;
+    qDebug() << "Going from" <<  DevMode.dmPosition.x << "x" << DevMode.dmPosition.y << "to" << x << "x" << y;
+
     DevMode.dmPosition.x = x;
     DevMode.dmPosition.y = y;
 
@@ -118,8 +123,16 @@ int changePrimaryScreen(const QString &deviceName)
     DISPLAY_DEVICE DisplayDevice;
 
     QPoint primaryScreenOldPosition = getScreenPosition(deviceName);
-    QMessageBox::information(NULL, "", "offsetx: " +  QString::number(primaryScreenOldPosition.x()) +
-                             "; offsety: " + QString::number(primaryScreenOldPosition.y()));
+    QMap<QString,QPoint> oldPositions;
+
+    //get old position for every visible screen
+//    int i = 0;
+//    initDisplayDevice(&DisplayDevice);
+//    while (EnumDisplayDevices(NULL, i++, &DisplayDevice, 1))
+//    {
+//        QString devName = QString::fromWCharArray(DisplayDevice.DeviceName);
+//        oldPositions.insert(devName, getScreenPosition(devName));
+//    }
 
     int i = 0;
     initDisplayDevice(&DisplayDevice);
