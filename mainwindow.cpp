@@ -81,8 +81,8 @@ int setScreenRect(const QString &deviceName, int x, int y, int width, int height
 
     DevMode.dmFields = DM_POSITION | DM_PELSHEIGHT | DM_PELSWIDTH;
 
-    qDebug() << deviceName;
-    qDebug() << "Going from" <<  DevMode.dmPosition.x << "x" << DevMode.dmPosition.y << "to" << x << "x" << y;
+//    qDebug() << deviceName;
+//    qDebug() << "Going from" <<  DevMode.dmPosition.x << "x" << DevMode.dmPosition.y << "to" << x << "x" << y;
 
     DevMode.dmPosition.x = x;
     DevMode.dmPosition.y = y;
@@ -193,6 +193,14 @@ void MainWindow::loadScreenInfos()
 
             QListWidgetItem *item = new QListWidgetItem(devDescription);
             item->setData(Qt::UserRole, QString::fromWCharArray(DisplayDevice.DeviceName));
+
+            if (DisplayDevice.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE)
+            {
+                QFont newFont = item->font();
+                newFont.setBold(true);
+                item->setFont(newFont);
+            }
+
             ui->lstDevices->addItem(item);
         }
         initDisplayDevice(&DisplayDevice);
