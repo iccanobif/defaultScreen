@@ -9,3 +9,8 @@ HEADERS += \
 
 FORMS += \
     mainwindow.ui
+
+OTHER_FILES +=
+
+RESOURCES += \
+    icons.qrc

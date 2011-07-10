@@ -171,6 +171,7 @@ int changePrimaryScreen(const QString &deviceName)
 void MainWindow::loadScreenInfos()
 {
     ui->lstDevices->clear();
+    trayMenu->clear();
 
     DISPLAY_DEVICE DisplayDevice;
     int i = 0;
@@ -202,9 +203,24 @@ void MainWindow::loadScreenInfos()
             }
 
             ui->lstDevices->addItem(item);
+
+            QAction* newAction = new QAction(devDescription, trayMenu);
+            newAction->setData(QString::fromWCharArray(DisplayDevice.DeviceName));
+            if (DisplayDevice.StateFlags & DISPLAY_DEVICE_PRIMARY_DEVICE)
+            {
+                QFont newFont = newAction->font();
+                newFont.setBold(true);
+                newAction->setFont(newFont);
+            }
+            trayMenu->addAction(newAction);
         }
         initDisplayDevice(&DisplayDevice);
     }
+}
+
+void MainWindow::handleTrayMenu(QAction* action) {
+    changePrimaryScreen(action->data().toString());
+    loadScreenInfos();
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -212,6 +228,13 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+    trayMenu = new QMenu();
+    tray = new QSystemTrayIcon();
+    tray->setIcon(QIcon(":/icons/icon.png"));
+    tray->setContextMenu(trayMenu);
+    tray->setVisible(true);
+    connect(trayMenu, SIGNAL(triggered(QAction*)),
+            this, SLOT(handleTrayMenu(QAction*)));
     loadScreenInfos();
 }
 
