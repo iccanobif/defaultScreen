@@ -10,7 +10,10 @@ HEADERS += \
 FORMS += \
     mainwindow.ui
 
-OTHER_FILES +=
+RC_FILE = defaultscreen.rc
 
 RESOURCES += \
     icons.qrc
+
+OTHER_FILES += \
+    defaultscreen.rc

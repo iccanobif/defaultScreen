@@ -241,6 +241,7 @@ MainWindow::MainWindow(QWidget *parent) :
 MainWindow::~MainWindow()
 {
     delete ui;
+    tray->hide();
 }
 
 void MainWindow::on_lstDevices_itemDoubleClicked(QListWidgetItem *item)
