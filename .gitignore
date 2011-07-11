@@ -1,3 +1,4 @@
+defaultScreen.pro.user
 *.o
 *.exe
 Makefile*
