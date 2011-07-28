@@ -17,21 +17,6 @@ void initDevMode(DEVMODE *DevMode)
     DevMode->dmSize = sizeof(DEVMODE);
 }
 
-int getNumberOfDevices()
-{
-    int i = 0;
-    int out = 0;
-    DISPLAY_DEVICE dd;
-    initDisplayDevice(&dd);
-    while (EnumDisplayDevices(NULL, i++, &dd, 1))
-    {
-        if ((dd.StateFlags & DISPLAY_DEVICE_ATTACHED_TO_DESKTOP) && !(dd.StateFlags & DISPLAY_DEVICE_MIRRORING_DRIVER))
-            out++;
-        initDisplayDevice(&dd);
-    }
-    return out;
-}
-
 void stampaRisultato(int result)
 {
     switch (result)
@@ -65,8 +50,27 @@ QRect getScreenRect(const QString &deviceName)
     return QRect(DevMode.dmPosition.x, DevMode.dmPosition.y, DevMode.dmPelsWidth, DevMode.dmPelsHeight);
 }
 
-int setScreenRect(const QString &deviceName, int x, int y, int width, int height)
+int getScreenRefreshRate(const QString &deviceName)
 {
+    DEVMODE DevMode;
+    WCHAR arrDeviceName[deviceName.length()+1];
+
+    deviceName.toWCharArray(arrDeviceName);
+    arrDeviceName[deviceName.length()] = '\0';
+
+    initDevMode(&DevMode);
+    if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
+    {
+        QMessageBox::critical(NULL, "Error", "Cannot find settings for display " + deviceName);
+        return -1;
+    }
+
+    return DevMode.dmDisplayFrequency;
+}
+
+int setScreenRect(const QString &deviceName, int x, int y, int width, int height, int refreshRate)
+{
+    qDebug() << deviceName << "refRate:" << refreshRate;
     DEVMODE DevMode;
     WCHAR arrDeviceName[deviceName.length()+1];
 
@@ -88,19 +92,20 @@ int setScreenRect(const QString &deviceName, int x, int y, int width, int height
     DevMode.dmPosition.y = y;
     DevMode.dmPelsHeight = height;
     DevMode.dmPelsWidth = width;
+    DevMode.dmDisplayFrequency = refreshRate;
 
     if (x == 0 && y == 0)
         return ChangeDisplaySettingsEx(arrDeviceName,
-                                                &DevMode,
-                                                NULL,
-                                                CDS_UPDATEREGISTRY | CDS_NORESET | CDS_SET_PRIMARY,
-                                                NULL);
+                                       &DevMode,
+                                       NULL,
+                                       CDS_UPDATEREGISTRY | CDS_NORESET | CDS_SET_PRIMARY,
+                                       NULL);
     else
         return ChangeDisplaySettingsEx(arrDeviceName,
-                                                &DevMode,
-                                                NULL,
-                                                CDS_UPDATEREGISTRY | CDS_NORESET,
-                                                NULL);
+                                       &DevMode,
+                                       NULL,
+                                       CDS_UPDATEREGISTRY | CDS_NORESET,
+                                       NULL);
 
 }
 
@@ -114,9 +119,7 @@ int detachScreen(const QString &deviceName)
 
     initDevMode(&DevMode);
     if ( !EnumDisplaySettings(arrDeviceName, ENUM_REGISTRY_SETTINGS, &DevMode) )
-    {
         return -1;
-    }
 
     DevMode.dmFields = DM_POSITION;
 
@@ -137,6 +140,7 @@ int changePrimaryScreen(const QString &deviceName)
 
     QRect primaryScreenOldRect = getScreenRect(deviceName);
     QMap<QString,QRect> oldRects;
+    QMap<QString,int> oldRefreshRates;
 
     //get old position for every visible screen
     int i = 0;
@@ -147,20 +151,24 @@ int changePrimaryScreen(const QString &deviceName)
         {
             QString devName = QString::fromWCharArray(DisplayDevice.DeviceName);
             oldRects.insert(devName, getScreenRect(devName));
+            oldRefreshRates.insert(devName, getScreenRefreshRate(devName));
             detachScreen(devName);
         }
     }
 
     QMapIterator<QString, QRect> it(oldRects);
+    QMapIterator<QString, int> itRefRate(oldRefreshRates);
 
     while (it.hasNext())
     {
         it.next();
+        itRefRate.next();
         setScreenRect(it.key(),
                       it.value().left() - primaryScreenOldRect.left(),
                       it.value().top() - primaryScreenOldRect.top(),
                       it.value().width(),
-                      it.value().height());
+                      it.value().height(),
+                      itRefRate.value());
     }
 
     ChangeDisplaySettingsEx(NULL, NULL, NULL, 0, NULL);
@@ -216,11 +224,28 @@ void MainWindow::loadScreenInfos()
         }
         initDisplayDevice(&DisplayDevice);
     }
+    trayMenu->addSeparator();
+    trayMenu->addAction("Quit")->setData("_DEFAULT_SCREEN_QUIT_");
 }
 
 void MainWindow::handleTrayMenu(QAction* action) {
+    if (action->data().toString() == "_DEFAULT_SCREEN_QUIT_")
+    {
+        QApplication::quit();
+        return;
+    }
     changePrimaryScreen(action->data().toString());
     loadScreenInfos();
+}
+
+void MainWindow::handleTrayMenuActivation(QSystemTrayIcon::ActivationReason reason) {
+    if (reason == QSystemTrayIcon::DoubleClick)
+    {
+        if (this->isHidden())
+            this->show();
+        else
+            this->hide();
+    }
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -235,6 +260,8 @@ MainWindow::MainWindow(QWidget *parent) :
     tray->setVisible(true);
     connect(trayMenu, SIGNAL(triggered(QAction*)),
             this, SLOT(handleTrayMenu(QAction*)));
+    connect(tray, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
+            this, SLOT(handleTrayMenuActivation(QSystemTrayIcon::ActivationReason)));
     loadScreenInfos();
 }
 

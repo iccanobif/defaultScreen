@@ -21,6 +21,7 @@ public:
 private slots:
     void on_lstDevices_itemDoubleClicked(QListWidgetItem *item);
     void handleTrayMenu(QAction* action);
+    void handleTrayMenuActivation(QSystemTrayIcon::ActivationReason reason);
 
 private:
     Ui::MainWindow *ui;
