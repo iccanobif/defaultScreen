@@ -4,6 +4,7 @@
 #include <winuser.h>
 #include <QMessageBox>
 #include <QDebug>
+#include <QTimer>
 
 void initDisplayDevice(DISPLAY_DEVICE *DisplayDevice)
 {
@@ -239,13 +240,13 @@ void MainWindow::handleTrayMenu(QAction* action) {
 }
 
 void MainWindow::handleTrayMenuActivation(QSystemTrayIcon::ActivationReason reason) {
-    if (reason == QSystemTrayIcon::DoubleClick)
-    {
-        if (this->isHidden())
-            this->show();
-        else
-            this->hide();
-    }
+//    if (reason == QSystemTrayIcon::DoubleClick)
+//    {
+//        if (this->isHidden())
+//            showNormal();
+//        else
+//            this->hide();
+//    }
 }
 
 MainWindow::MainWindow(QWidget *parent) :
@@ -263,6 +264,20 @@ MainWindow::MainWindow(QWidget *parent) :
     connect(tray, SIGNAL(activated(QSystemTrayIcon::ActivationReason)),
             this, SLOT(handleTrayMenuActivation(QSystemTrayIcon::ActivationReason)));
     loadScreenInfos();
+}
+
+void MainWindow::changeEvent(QEvent* e)
+{
+    if (e->type() == QEvent::WindowStateChange)
+    {
+        if (isMinimized())
+        {
+            QApplication::processEvents();
+            QTimer::singleShot(250, this, SLOT(hide()));
+            e->ignore();
+        }
+    }
+    QWidget::changeEvent(e);
 }
 
 MainWindow::~MainWindow()

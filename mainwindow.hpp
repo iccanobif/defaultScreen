@@ -28,6 +28,7 @@ private:
     void loadScreenInfos();
     QSystemTrayIcon* tray;
     QMenu* trayMenu;
+    void changeEvent(QEvent *);
 };
 
 #endif // MAINWINDOW_HPP
