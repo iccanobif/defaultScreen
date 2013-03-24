@@ -1,5 +1,5 @@
-This application should, like, make it easier to set which screen should be the primary one in a multi-monitor environment.
+defaultScreen
 
-
+Adds an icon on the traybar that allows to quickly change the default screen in a multi-monitor environment.
 
 It's written in C++/Qt, but since it makes use of Win32 APIs, it will only run on Windows.
