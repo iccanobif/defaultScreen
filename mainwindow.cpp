@@ -36,7 +36,8 @@ void stampaRisultato(int result)
 QRect getScreenRect(const QString &deviceName)
 {
     DEVMODE DevMode;
-    WCHAR arrDeviceName[deviceName.length()+1];
+//    WCHAR arrDeviceName[deviceName.length()+1];
+    WCHAR* arrDeviceName = new WCHAR[deviceName.length()+1];
 
     deviceName.toWCharArray(arrDeviceName);
     arrDeviceName[deviceName.length()] = '\0';
@@ -54,7 +55,8 @@ QRect getScreenRect(const QString &deviceName)
 int getScreenRefreshRate(const QString &deviceName)
 {
     DEVMODE DevMode;
-    WCHAR arrDeviceName[deviceName.length()+1];
+//    WCHAR arrDeviceName[deviceName.length()+1];
+    WCHAR* arrDeviceName = new WCHAR[deviceName.length()+1];
 
     deviceName.toWCharArray(arrDeviceName);
     arrDeviceName[deviceName.length()] = '\0';
@@ -73,7 +75,8 @@ int setScreenRect(const QString &deviceName, int x, int y, int width, int height
 {
     qDebug() << deviceName << "refRate:" << refreshRate;
     DEVMODE DevMode;
-    WCHAR arrDeviceName[deviceName.length()+1];
+//    WCHAR arrDeviceName[deviceName.length()+1];
+    WCHAR* arrDeviceName = new WCHAR[deviceName.length()+1];
 
     deviceName.toWCharArray(arrDeviceName);
     arrDeviceName[deviceName.length()] = '\0';
@@ -113,7 +116,8 @@ int setScreenRect(const QString &deviceName, int x, int y, int width, int height
 int detachScreen(const QString &deviceName)
 {
     DEVMODE DevMode;
-    WCHAR arrDeviceName[deviceName.length()+1];
+//    WCHAR arrDeviceName[deviceName.length()+1];
+    WCHAR* arrDeviceName = new WCHAR[deviceName.length()+1];
 
     deviceName.toWCharArray(arrDeviceName);
     arrDeviceName[deviceName.length()] = '\0';
